@@ -29,6 +29,9 @@ let AuthController = class AuthController {
     async login(body, res) {
         return this.authService.signIn(body, res);
     }
+    async oauthRedirect(query, res) {
+        return this.authService.oauthRedirect(query?.code, res);
+    }
     constructor(authService){
         this.authService = authService;
     }
@@ -44,6 +47,17 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
+_ts_decorate([
+    (0, _common.Get)('redirect'),
+    _ts_param(0, (0, _common.Query)()),
+    _ts_param(1, (0, _common.Res)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        Object,
+        typeof _express.Response === "undefined" ? Object : _express.Response
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], AuthController.prototype, "oauthRedirect", null);
 AuthController = _ts_decorate([
     (0, _common.Controller)('auth'),
     _ts_metadata("design:type", Function),

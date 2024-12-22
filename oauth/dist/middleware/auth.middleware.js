@@ -34,10 +34,9 @@ function _ts_param(paramIndex, decorator) {
 let AuthMiddleware = class AuthMiddleware {
     async use(req, res, next) {
         const cookies = req.cookies;
-        const { userId = '' } = cookies;
-        const access_token = await this.redis.get(`userId:${userId}`);
-        console.log(access_token, 'access_token');
-        if (access_token) {
+        const { userId = '', gid } = cookies;
+        const accessToken = await this.redis.get(`userId:${userId}`);
+        if (accessToken) {
             const new_access_token = await this.jwtService.signAsync({
                 userId
             }, {
@@ -49,6 +48,11 @@ let AuthMiddleware = class AuthMiddleware {
                 maxAge: 1000 * 60 * 60 * 24 * 3
             });
             next();
+        } else if (gid) {
+            const githubAccessToken = await this.redis.get(`gid:${gid}`);
+            if (githubAccessToken) {
+                next();
+            }
         } else {
             //这里会有跨域错误，不能直接重定向
             res.setHeader('Access-Control-Allow-Credentials', 'true');

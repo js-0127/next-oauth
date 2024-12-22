@@ -13,6 +13,7 @@ const _prismaservice = require("./prisma.service");
 const _jwt = require("@nestjs/jwt");
 const _ioredis = require("@nestjs-modules/ioredis");
 const _ioredis1 = /*#__PURE__*/ _interop_require_default(require("ioredis"));
+const _axios = /*#__PURE__*/ _interop_require_default(require("axios"));
 function _interop_require_default(obj) {
     return obj && obj.__esModule ? obj : {
         default: obj
@@ -55,6 +56,33 @@ let AuthService = class AuthService {
             status: 200,
             message: '登录成功'
         });
+    }
+    async oauthRedirect(code, res) {
+        console.log(code);
+        const tokenResponse = await (0, _axios.default)({
+            method: 'post',
+            url: 'https://github.com/login/oauth/access_token?' + `client_id=${'Ov23li9D4HB48T32pxI9'}&` + `client_secret=${'d192c5308379781d18d3cb48a6d0f704346bf5ab'}&` + `code=${code}`,
+            headers: {
+                accept: 'application/json'
+            }
+        });
+        const accessToken = tokenResponse.data.access_token;
+        const result = await (0, _axios.default)({
+            method: 'get',
+            url: `https://api.github.com/user`,
+            headers: {
+                accept: 'application/json',
+                Authorization: `token ${accessToken}`
+            }
+        });
+        const userInfo = result.data;
+        const userId = result.data.id;
+        this.redis.multi().set(`gid:${userId}`, accessToken).expire(`gid:${userId}`, 60 * 60 * 24 * 3).exec();
+        res.cookie('gid', userId, {
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60 * 24 * 3
+        });
+        return userInfo;
     }
     constructor(prisma, jwtService, redis){
         this.prisma = prisma;

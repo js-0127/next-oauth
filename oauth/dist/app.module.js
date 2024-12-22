@@ -28,6 +28,9 @@ let AppModule = class AppModule {
         consumer.apply(_authmiddleware.AuthMiddleware).exclude({
             path: '/auth/login',
             method: _common.RequestMethod.ALL
+        }, {
+            path: '/auth/redirect',
+            method: _common.RequestMethod.ALL
         }).forRoutes({
             path: '*',
             method: _common.RequestMethod.ALL
