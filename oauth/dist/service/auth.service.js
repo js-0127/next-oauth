@@ -34,7 +34,7 @@ function _ts_param(paramIndex, decorator) {
     };
 }
 let AuthService = class AuthService {
-    async signIn(loginParam, res) {
+    async signIn(loginParam) {
         const { email } = loginParam;
         const user = await this.prisma.user.create({
             data: {
@@ -48,41 +48,60 @@ let AuthService = class AuthService {
             secret: process.env.ACCESS_TOKEN_SECRET
         });
         this.redis.multi().set(`userId:${user.id}`, access_token).expire(`userId:${user.id}`, 60 * 60 * 24 * 3).exec();
-        res.cookie('userId', user.id, {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 24 * 3
-        });
-        res.send({
-            status: 200,
-            message: '登录成功'
-        });
+        return {
+            userId: user.id
+        };
     }
-    async oauthRedirect(code, res) {
-        console.log(code);
-        const tokenResponse = await (0, _axios.default)({
-            method: 'post',
-            url: 'https://github.com/login/oauth/access_token?' + `client_id=${'Ov23li9D4HB48T32pxI9'}&` + `client_secret=${'d192c5308379781d18d3cb48a6d0f704346bf5ab'}&` + `code=${code}`,
-            headers: {
-                accept: 'application/json'
+    async oauthRedirect(code) {
+        try {
+            const tokenResponse = await (0, _axios.default)({
+                method: 'post',
+                url: `https://gitee.com/oauth/token?grant_type=authorization_code&code=${code}&client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}&redirect_uri=${process.env.REDIRECT_URL}`,
+                headers: {
+                    accept: 'application/json'
+                },
+                data: {
+                    client_secret: process.env.CLIENT_SECRET
+                }
+            });
+            console.log(tokenResponse, 'data');
+            const accessToken = tokenResponse.data.access_token;
+            const result = await (0, _axios.default)({
+                method: 'get',
+                url: `https://gitee.com/api/v5/user?access_token=${accessToken}`,
+                headers: {
+                    accept: 'application/json'
+                }
+            });
+            const userInfo = result.data;
+            console.log(userInfo, 'userInfo');
+            const userId = userInfo.id;
+            this.redis.multi().set(`gid:${userId}`, accessToken).expire(`gid:${userId}`, 60 * 60 * 24 * 3).exec();
+            await this.prisma.user.create({
+                data: {
+                    id: userId,
+                    email: userInfo?.email,
+                    userName: userInfo?.login,
+                    avatar: userInfo?.avatar_url
+                }
+            });
+            return {
+                gid: userId
+            };
+        } catch (error) {
+            console.log(error, 'error');
+        }
+    }
+    async getUserInfo(cookies) {
+        const { userId, gid } = cookies;
+        const user = await this.prisma.user.findUnique({
+            where: {
+                id: Number(userId) || Number(gid)
             }
         });
-        const accessToken = tokenResponse.data.access_token;
-        const result = await (0, _axios.default)({
-            method: 'get',
-            url: `https://api.github.com/user`,
-            headers: {
-                accept: 'application/json',
-                Authorization: `token ${accessToken}`
-            }
-        });
-        const userInfo = result.data;
-        const userId = result.data.id;
-        this.redis.multi().set(`gid:${userId}`, accessToken).expire(`gid:${userId}`, 60 * 60 * 24 * 3).exec();
-        res.cookie('gid', userId, {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 24 * 3
-        });
-        return userInfo;
+        return {
+            user
+        };
     }
     constructor(prisma, jwtService, redis){
         this.prisma = prisma;

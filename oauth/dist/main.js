@@ -15,7 +15,8 @@ async function bootstrap() {
     const app = await _core.NestFactory.create(_appmodule.AppModule);
     app.enableCors({
         origin: [
-            'http://localhost:3000'
+            'http://localhost:3000',
+            'http://localhost:3000/auth/redirect'
         ],
         credentials: true
     });

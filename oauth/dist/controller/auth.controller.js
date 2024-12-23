@@ -27,10 +27,25 @@ function _ts_param(paramIndex, decorator) {
 }
 let AuthController = class AuthController {
     async login(body, res) {
-        return this.authService.signIn(body, res);
+        const { userId } = await this.authService.signIn(body);
+        res.cookie('userId', userId, {
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60 * 24 * 3
+        });
     }
     async oauthRedirect(query, res) {
-        return this.authService.oauthRedirect(query?.code, res);
+        const result = await this.authService.oauthRedirect(query?.code);
+        if (result?.gid) {
+            res.cookie('gid', result?.gid, {
+                httpOnly: true,
+                maxAge: 1000 * 60 * 60 * 24 * 1
+            });
+        }
+        res.status(200).send();
+    }
+    async getUserInfo(req) {
+        const cookies = req.cookies;
+        return this.authService.getUserInfo(cookies);
     }
     constructor(authService){
         this.authService = authService;
@@ -58,6 +73,15 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], AuthController.prototype, "oauthRedirect", null);
+_ts_decorate([
+    (0, _common.Get)('userInfo'),
+    _ts_param(0, (0, _common.Req)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _express.Request === "undefined" ? Object : _express.Request
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], AuthController.prototype, "getUserInfo", null);
 AuthController = _ts_decorate([
     (0, _common.Controller)('auth'),
     _ts_metadata("design:type", Function),
