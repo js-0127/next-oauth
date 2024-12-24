@@ -14,24 +14,22 @@ export class AuthService {
   ) {}
   async signIn(loginParam: any) {
     const { email } = loginParam;
-    const user = await this.prisma.user.create({
-      data: {
+
+    const loginUser = await this.prisma.user.findUnique({
+      where: {
         email,
       },
     });
-    const payload = { sub: user.id };
-    const access_token = await this.jwtService.signAsync(payload, {
-      secret: process.env.ACCESS_TOKEN_SECRET,
-    });
-    this.redis
-      .multi()
-      .set(`userId:${user.id}`, access_token)
-      .expire(`userId:${user.id}`, 60 * 60 * 24 * 3)
-      .exec();
 
-    return {
-      userId: user.id,
-    };
+    if (!loginUser) {
+      const user = await this.prisma.user.create({
+        data: {
+          email,
+        },
+      });
+      return this.setJwtToken(user.id);
+    }
+    return this.setJwtToken(loginUser.id);
   }
 
   async oauthRedirect(code: string) {
@@ -56,7 +54,6 @@ export class AuthService {
         },
       });
       const userInfo = result.data;
-      console.log(userInfo, 'userInfo');
       const userId = userInfo.id;
       this.redis
         .multi()
@@ -64,15 +61,34 @@ export class AuthService {
         .expire(`gid:${userId}`, 60 * 60 * 24 * 3)
         .exec();
 
-      await this.prisma.user.create({
-        data: {
+      const user = await this.prisma.user.findUnique({
+        where: {
           id: userId,
-          email: userInfo?.email,
-          userName: userInfo?.login,
-          avatar: userInfo?.avatar_url,
         },
       });
-
+      if (!user) {
+        await this.prisma.user.create({
+          data: {
+            id: userId,
+            email: userInfo?.email,
+            userName: userInfo?.login,
+            avatar: userInfo?.avatar_url,
+            nickName: userInfo?.name,
+          },
+        });
+      } else {
+        await this.prisma.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            email: userInfo?.email,
+            userName: userInfo?.login,
+            avatar: userInfo?.avatar_url,
+            nickName: userInfo?.name,
+          },
+        });
+      }
       return {
         gid: userId,
       };
@@ -90,6 +106,22 @@ export class AuthService {
     });
     return {
       user,
+    };
+  }
+
+  async setJwtToken(userId: number) {
+    const payload = { sub: userId };
+    const access_token = await this.jwtService.signAsync(payload, {
+      secret: process.env.ACCESS_TOKEN_SECRET,
+    });
+    this.redis
+      .multi()
+      .set(`userId:${userId}`, access_token)
+      .expire(`userId:${userId}`, 60 * 60 * 24 * 3)
+      .exec();
+
+    return {
+      userId: userId,
     };
   }
 }

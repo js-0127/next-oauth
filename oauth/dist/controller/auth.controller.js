@@ -32,6 +32,10 @@ let AuthController = class AuthController {
             httpOnly: true,
             maxAge: 1000 * 60 * 60 * 24 * 3
         });
+        res.status(200).send({
+            status: 200,
+            message: '登录成功'
+        });
     }
     async oauthRedirect(query, res) {
         const result = await this.authService.oauthRedirect(query?.code);
@@ -46,6 +50,27 @@ let AuthController = class AuthController {
     async getUserInfo(req) {
         const cookies = req.cookies;
         return this.authService.getUserInfo(cookies);
+    }
+    async getAuth(req, res) {
+        const cookies = req.cookies;
+        console.log(cookies, 'cookies');
+        if (Object.keys(cookies).length) {
+            res.status(302).json({
+                redirectUrl: 'http://localhost:3000',
+                cookies
+            });
+            return res.send();
+        }
+        return res.send({
+            status: 200
+        });
+    }
+    async logout(res) {
+        res.clearCookie('userId');
+        res.clearCookie('gid');
+        res.status(200).send({
+            message: 'logout success'
+        });
     }
     constructor(authService){
         this.authService = authService;
@@ -82,6 +107,26 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], AuthController.prototype, "getUserInfo", null);
+_ts_decorate([
+    (0, _common.Get)(),
+    _ts_param(0, (0, _common.Req)()),
+    _ts_param(1, (0, _common.Res)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _express.Request === "undefined" ? Object : _express.Request,
+        typeof _express.Response === "undefined" ? Object : _express.Response
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], AuthController.prototype, "getAuth", null);
+_ts_decorate([
+    (0, _common.Get)('logout'),
+    _ts_param(0, (0, _common.Res)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _express.Response === "undefined" ? Object : _express.Response
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], AuthController.prototype, "logout", null);
 AuthController = _ts_decorate([
     (0, _common.Controller)('auth'),
     _ts_metadata("design:type", Function),

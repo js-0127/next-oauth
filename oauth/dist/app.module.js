@@ -31,6 +31,9 @@ let AppModule = class AppModule {
         }, {
             path: '/auth/redirect',
             method: _common.RequestMethod.ALL
+        }, {
+            path: '/auth',
+            method: _common.RequestMethod.ALL
         }).forRoutes({
             path: '*',
             method: _common.RequestMethod.ALL
